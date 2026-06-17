@@ -9,7 +9,7 @@ const {
 const { protect } = require("../middleware/auth");
 const upload = require("../middleware/upload");
 
-const router = express.Router();
+const router = express.Router()
 
 router.get("/", getProperties);
 router.get("/:id", getProperty);
