@@ -5,12 +5,16 @@ const {
   createProperty,
   updateProperty,
   deleteProperty,
+  getCities,
+  getCityStats,
 } = require("../controllers/propertyController");
 const { protect } = require("../middleware/auth");
 const upload = require("../middleware/upload");
 
 const router = express.Router()
 
+router.get("/cities/stats", getCityStats);
+router.get("/cities", getCities);
 router.get("/", getProperties);
 router.get("/:id", getProperty);
 

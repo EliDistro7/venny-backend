@@ -40,6 +40,29 @@ async function getProperties(req, res, next) {
   }
 }
 
+async function getCityStats(req, res, next) {
+  try {
+    const stats = await Property.aggregate([
+      { $group: { _id: "$city", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $project: { _id: 0, city: "$_id", count: 1 } },
+    ]);
+    res.json(stats);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/properties/cities  (public)
+async function getCities(req, res, next) {
+  try {
+    const cities = await Property.distinct("city");
+    res.json(["All Cities", ...cities.sort()]);
+  } catch (err) {
+    next(err);
+  }
+}
+
 // GET /api/properties/:id  (public)
 async function getProperty(req, res, next) {
   try {
@@ -160,4 +183,6 @@ module.exports = {
   createProperty,
   updateProperty,
   deleteProperty,
+  getCityStats,
+  getCities,
 };
