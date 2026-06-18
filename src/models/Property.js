@@ -5,8 +5,7 @@ const propertySchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true },
     location: { type: String, required: true, trim: true },
     city: { type: String, required: true, trim: true },
-    price: { type: Number, required: true, min: 0 },
-    currency: { type: String, default: "TZS" },
+   
     type: { type: String, enum: ["sale", "rent"], required: true },
     category: {
       type: String,

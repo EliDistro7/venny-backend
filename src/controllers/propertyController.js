@@ -60,8 +60,7 @@ async function createProperty(req, res, next) {
       title: req.body.title,
       location: req.body.location,
       city: req.body.city,
-      price: Number(req.body.price),
-      currency: req.body.currency || "TZS",
+     
       type: req.body.type,
       category: req.body.category,
       bedrooms: Number(req.body.bedrooms) || 0,
@@ -92,7 +91,7 @@ async function updateProperty(req, res, next) {
       "title",
       "location",
       "city",
-      "currency",
+
       "type",
       "category",
       "status",
@@ -102,7 +101,7 @@ async function updateProperty(req, res, next) {
       if (req.body[field] !== undefined) property[field] = req.body[field];
     });
 
-    if (req.body.price !== undefined) property.price = Number(req.body.price);
+   
     if (req.body.bedrooms !== undefined) property.bedrooms = Number(req.body.bedrooms);
     if (req.body.bathrooms !== undefined) property.bathrooms = Number(req.body.bathrooms);
     if (req.body.area !== undefined) property.area = Number(req.body.area);
