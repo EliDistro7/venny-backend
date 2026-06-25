@@ -1,8 +1,5 @@
-
-
 const Property = require("../models/Property");
-const { uploadImagesToR2, deleteImagesFromR2 } = require("../config/r2");
-
+const { uploadImagesToR2, deleteImagesFromR2, uploadVideosToR2, deleteVideosFromR2 } = require("../config/r2");
 
 /**
  * Amenities can arrive as a JSON array string (preferred) or a
@@ -25,15 +22,17 @@ function parseAmenities(raw) {
 // GET /api/properties  (public, supports optional filters)
 async function getProperties(req, res, next) {
   try {
-    const { city, type, category, featured } = req.query;
+    const { city, type, category, featured, availability } = req.query;
     const filter = {};
 
     if (city && city !== "All Cities") filter.city = city;
     if (type && type !== "All") filter.type = type;
     if (category && category !== "All Types") filter.category = category;
     if (featured !== undefined) filter.featured = featured === "true";
+    if (availability) filter.availability = availability;
 
     const properties = await Property.find(filter).sort({ createdAt: -1 });
+    console.log('properties', properties);
     res.json(properties);
   } catch (err) {
     next(err);
@@ -59,6 +58,7 @@ async function getCityStats(req, res, next) {
     next(err);
   }
 }
+
 // GET /api/properties/cities  (public)
 async function getCities(req, res, next) {
   try {
@@ -80,26 +80,40 @@ async function getProperty(req, res, next) {
   }
 }
 
-// POST /api/properties  (protected, multipart/form-data with an "images" field)
 async function createProperty(req, res, next) {
   try {
-    const imageUrls = req.files?.length ? await uploadImagesToR2(req.files) : [];
-    console.log("imageUrls after R2 upload:", imageUrls);
+    // Support both old multipart-upload path and new presigned-URL path
+    let imageUrls = [];
+    let videoUrls = [];
+
+    if (req.body.imageUrls) {
+      // New path: URLs already uploaded directly to R2
+      try { imageUrls = JSON.parse(req.body.imageUrls); } catch { imageUrls = []; }
+      try { videoUrls = JSON.parse(req.body.videoUrls || "[]"); } catch { videoUrls = []; }
+    } else {
+      // Old path: files came through multer (small files / fallback)
+      const imageFiles = req.files?.images ?? [];
+      const videoFiles = req.files?.videos ?? [];
+      imageUrls = imageFiles.length ? await uploadImagesToR2(imageFiles) : [];
+      videoUrls = videoFiles.length ? await uploadVideosToR2(videoFiles) : [];
+    }
+
     const property = await Property.create({
       title: req.body.title,
       location: req.body.location,
       city: req.body.city,
-     
       type: req.body.type,
       category: req.body.category,
       bedrooms: Number(req.body.bedrooms) || 0,
       bathrooms: Number(req.body.bathrooms) || 0,
       area: Number(req.body.area),
       status: req.body.status || "delivered",
+      availability: req.body.availability || "available",
       featured: req.body.featured === "true" || req.body.featured === true,
       description: req.body.description || "",
       amenities: parseAmenities(req.body.amenities),
       images: imageUrls,
+      videos: videoUrls,
     });
 
     res.status(201).json(property);
@@ -108,9 +122,14 @@ async function createProperty(req, res, next) {
   }
 }
 
+
+
 // PUT /api/properties/:id  (protected, multipart/form-data)
-// Accepts optional new "images" files to append, and an optional
-// "removeImages" field (JSON array of existing URLs) to delete.
+// Accepts optional new "images" / "videos" files to append, and optional
+// "removeImages" / "removeVideos" fields (JSON arrays of existing URLs) to delete.
+// Also accepts pre-uploaded "imageUrls" / "videoUrls" (JSON arrays of R2 public
+// URLs) from the presigned-URL flow — these are merged with existing media instead
+// of going through multer.
 async function updateProperty(req, res, next) {
   try {
     const property = await Property.findById(req.params.id);
@@ -120,45 +139,80 @@ async function updateProperty(req, res, next) {
       "title",
       "location",
       "city",
-
       "type",
       "category",
       "status",
+      "availability",
       "description",
     ];
     fields.forEach((field) => {
       if (req.body[field] !== undefined) property[field] = req.body[field];
     });
 
-   
-    if (req.body.bedrooms !== undefined) property.bedrooms = Number(req.body.bedrooms);
+    if (req.body.bedrooms  !== undefined) property.bedrooms  = Number(req.body.bedrooms);
     if (req.body.bathrooms !== undefined) property.bathrooms = Number(req.body.bathrooms);
-    if (req.body.area !== undefined) property.area = Number(req.body.area);
-    if (req.body.featured !== undefined) {
+    if (req.body.area      !== undefined) property.area      = Number(req.body.area);
+    if (req.body.featured  !== undefined) {
       property.featured = req.body.featured === "true" || req.body.featured === true;
     }
     if (req.body.amenities !== undefined) {
       property.amenities = parseAmenities(req.body.amenities);
     }
 
-    // Remove any images the admin deleted in the form
+    // ── Images ──────────────────────────────────────────────────────────────
+
+    // 1. Delete any images the client flagged for removal, then strip them
+    //    from the stored list.
     if (req.body.removeImages) {
       let toRemove = [];
-      try {
-        toRemove = JSON.parse(req.body.removeImages);
-      } catch {
-        toRemove = [];
-      }
+      try { toRemove = JSON.parse(req.body.removeImages); } catch { /* ignore */ }
       if (toRemove.length) {
         await deleteImagesFromR2(toRemove);
         property.images = property.images.filter((url) => !toRemove.includes(url));
       }
     }
 
-    // Append any newly uploaded images
-    if (req.files?.length) {
-      const newUrls = await uploadImagesToR2(req.files);
-      property.images = [...property.images, ...newUrls];
+    // 2a. Presigned-URL path — client already uploaded directly to R2 and is
+    //     sending back the resulting public URLs as a JSON array.
+    if (req.body.imageUrls) {
+      let incoming = [];
+      try { incoming = JSON.parse(req.body.imageUrls); } catch { /* ignore */ }
+      // imageUrls from the client is the *full* desired image list (existing
+      // kept + newly uploaded), so replace rather than append.
+      if (incoming.length) property.images = incoming;
+    } else {
+      // 2b. Legacy multer path — files came through the server as multipart.
+      const newImageFiles = req.files?.images ?? [];
+      if (newImageFiles.length) {
+        const newUrls = await uploadImagesToR2(newImageFiles);
+        property.images = [...property.images, ...newUrls];
+      }
+    }
+
+    // ── Videos ──────────────────────────────────────────────────────────────
+
+    // 1. Delete flagged videos and remove them from the stored list.
+    if (req.body.removeVideos) {
+      let toRemove = [];
+      try { toRemove = JSON.parse(req.body.removeVideos); } catch { /* ignore */ }
+      if (toRemove.length) {
+        await deleteVideosFromR2(toRemove);
+        property.videos = property.videos.filter((url) => !toRemove.includes(url));
+      }
+    }
+
+    // 2a. Presigned-URL path — same logic as images above.
+    if (req.body.videoUrls) {
+      let incoming = [];
+      try { incoming = JSON.parse(req.body.videoUrls); } catch { /* ignore */ }
+      if (incoming.length) property.videos = incoming;
+    } else {
+      // 2b. Legacy multer path.
+      const newVideoFiles = req.files?.videos ?? [];
+      if (newVideoFiles.length) {
+        const newUrls = await uploadVideosToR2(newVideoFiles);
+        property.videos = [...property.videos, ...newUrls];
+      }
     }
 
     await property.save();
@@ -168,6 +222,7 @@ async function updateProperty(req, res, next) {
   }
 }
 
+
 // DELETE /api/properties/:id  (protected)
 async function deleteProperty(req, res, next) {
   try {
@@ -175,6 +230,7 @@ async function deleteProperty(req, res, next) {
     if (!property) return res.status(404).json({ message: "Property not found" });
 
     await deleteImagesFromR2(property.images);
+    await deleteVideosFromR2(property.videos);
     await property.deleteOne();
 
     res.json({ message: "Property deleted" });
