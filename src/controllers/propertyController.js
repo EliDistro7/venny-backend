@@ -43,16 +43,22 @@ async function getProperties(req, res, next) {
 async function getCityStats(req, res, next) {
   try {
     const stats = await Property.aggregate([
-      { $group: { _id: "$city", count: { $sum: 1 } } },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: "$city",
+          count: { $sum: 1 },
+          image: { $first: { $arrayElemAt: ["$images", 0] } },
+        },
+      },
       { $sort: { count: -1 } },
-      { $project: { _id: 0, city: "$_id", count: 1 } },
+      { $project: { _id: 0, city: "$_id", count: 1, image: { $ifNull: ["$image", ""] } } },
     ]);
     res.json(stats);
   } catch (err) {
     next(err);
   }
 }
-
 // GET /api/properties/cities  (public)
 async function getCities(req, res, next) {
   try {

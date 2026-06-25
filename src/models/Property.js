@@ -5,7 +5,7 @@ const propertySchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true },
     location: { type: String, required: true, trim: true },
     city: { type: String, required: true, trim: true },
-   
+
     type: { type: String, enum: ["sale", "rent"], required: true },
     category: {
       type: String,
@@ -20,7 +20,13 @@ const propertySchema = new mongoose.Schema(
       enum: ["delivered", "work_in_progress"],
       default: "delivered",
     },
+    availability: {
+      type: String,
+      enum: ["available", "sold", "rented", "reserved"],
+      default: "available",
+    },
     images: { type: [String], default: [] },
+    videos: { type: [String], default: [] },
     featured: { type: Boolean, default: false },
     description: { type: String, default: "" },
     amenities: { type: [String], default: [] },

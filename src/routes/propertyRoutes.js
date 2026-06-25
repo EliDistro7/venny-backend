@@ -11,15 +11,21 @@ const {
 const { protect } = require("../middleware/auth");
 const upload = require("../middleware/upload");
 
-const router = express.Router()
+const router = express.Router();
+
+// Accept both "images" (max 10) and "videos" (max 5) in the same request
+const uploadFields = upload.fields([
+  { name: "images", maxCount: 10 },
+  { name: "videos", maxCount: 5 },
+]);
 
 router.get("/cities/stats", getCityStats);
 router.get("/cities", getCities);
 router.get("/", getProperties);
 router.get("/:id", getProperty);
 
-router.post("/", protect, upload.array("images", 10), createProperty);
-router.put("/:id", protect, upload.array("images", 10), updateProperty);
+router.post("/", protect, uploadFields, createProperty);
+router.put("/:id", protect, uploadFields, updateProperty);
 router.delete("/:id", protect, deleteProperty);
 
 module.exports = router;
