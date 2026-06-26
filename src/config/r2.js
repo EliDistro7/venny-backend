@@ -108,7 +108,9 @@ async function createPresignedUploadUrl(prefix, filename, contentType) {
   const command = new PutObjectCommand({
     Bucket: BUCKET,
     Key: key,
-    ContentType: contentType,
+    // Do not lock ContentType into the signature —
+    // browser MIME detection can differ from what the server expects,
+    // causing a SignatureDoesNotMatch rejection.
   });
 
   const url = await getSignedUrl(r2, command, { expiresIn: 600 });
