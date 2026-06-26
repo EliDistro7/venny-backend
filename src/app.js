@@ -4,6 +4,7 @@ const morgan = require("morgan");
 
 const authRoutes = require("./routes/authRoutes");
 const propertyRoutes = require("./routes/propertyRoutes");
+const contentRoutes = require("./routes/contentRoutes"); // ← new
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
@@ -17,14 +18,13 @@ app.use(
 
 if (process.env.NODE_ENV !== "production") app.use(morgan("dev"));
 
-// express.json() must come before any route that reads req.body as JSON.
-// Multipart routes (multer) parse their own body and ignore this.
 app.use(express.json());
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/properties", propertyRoutes);
+app.use("/api/content", contentRoutes); // ← new
 
 app.use(notFound);
 app.use(errorHandler);
