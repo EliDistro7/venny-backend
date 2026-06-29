@@ -125,6 +125,7 @@ module.exports = {
   uploadImagesToR2,
   deleteImageFromR2,
   deleteImagesFromR2,
+  uploadFileStreamToR2,
   uploadVideoToR2,
   uploadVideosToR2,
   deleteVideoFromR2,
