@@ -17,6 +17,20 @@ const portfolioSchema = new mongoose.Schema(
     description: { type: String, default: "" },
     descriptionSw: { type: String, default: "" },
 
+    // Optional external link (e.g. live site or app store URL)
+    link: {
+      type: String,
+      trim: true,
+      default: "",
+      validate: {
+        validator: function (value) {
+          if (!value) return true; // optional — empty is fine
+          return /^https?:\/\/[^\s$.?#].[^\s]*$/i.test(value);
+        },
+        message: (props) => `${props.value} is not a valid URL`,
+      },
+    },
+
     // R2 public URL for the grid thumbnail
     coverUrl: { type: String, default: "" },
     // R2 object key — used to generate presigned EPUB read URLs + for deletion

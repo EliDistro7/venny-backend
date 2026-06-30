@@ -40,6 +40,9 @@ async function listPortfolio(req, res, next) {
       .sort({ createdAt: -1 })
       .select("-__v");
 
+
+      //console.log('portfolio items ', items);
+
     res.json({ success: true, data: items });
   } catch (err) {
     next(err);
@@ -111,7 +114,7 @@ async function adminListAll(req, res, next) {
  */
 async function createPortfolioItem(req, res, next) {
   try {
-    const { title, titleSw, category, client, year, description, descriptionSw, published } = req.body;
+    const { title, titleSw, category, client, year, description, descriptionSw, link, published } = req.body;
 
     const item = await Portfolio.create({
       title,
@@ -121,6 +124,7 @@ async function createPortfolioItem(req, res, next) {
       year,
       description,
       descriptionSw,
+      link,
       published: published === true || published === "true",
     });
 
@@ -136,21 +140,29 @@ async function createPortfolioItem(req, res, next) {
  */
 async function updatePortfolioItem(req, res, next) {
   try {
-    const allowed = ["title", "titleSw", "category", "client", "year", "description", "descriptionSw", "published"];
+    const allowed = ["title", "titleSw", "category", "client", "year", "description", "descriptionSw", "link", "published"];
     const updates = {};
     for (const key of allowed) {
+      console.log('current key', key);
+      console.log(req.body[key]);
       if (req.body[key] !== undefined) updates[key] = req.body[key];
     }
-
+   
+ //   console.log("schema paths:", Object.keys(Portfolio.schema.paths));
     const item = await Portfolio.findByIdAndUpdate(
       req.params.id,
       { $set: updates },
       { new: true, runValidators: true }
     );
 
-    if (!item) return res.status(404).json({ success: false, message: "Not found" });
-
+    if (!item){ 
+    //  console.log('item not found');
+      return res.status(404).json({ success: false, message: "Not found" });
+    }
+     
+   // console.log('edited item', item);
     res.json({ success: true, data: item });
+    console.log('item updated succesfully');
   } catch (err) {
     next(err);
   }
