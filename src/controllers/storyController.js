@@ -299,6 +299,7 @@ async function deleteCover(req, res, next) {
  */
 async function uploadGalleryImages(req, res, next) {
   try {
+     console.log("req.body:", req.body); 
     if (!req.files?.length) return res.status(400).json({ success: false, message: "No files provided" });
 
     const item = await Story.findById(req.params.id);

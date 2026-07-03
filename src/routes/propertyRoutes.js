@@ -23,7 +23,7 @@ const uploadFields = upload.fields([
 
 // POST /api/properties/presign
 // body: { files: [{ name, type, category }] }  category = "image" | "video"
-router.post("/presign", protect, async (req, res, next) => {
+router.post("/presign", protect, express.json(), async (req, res, next) => {
   try {
     const { files } = req.body; // [{ name, type, category }]
     const results = await Promise.all(
