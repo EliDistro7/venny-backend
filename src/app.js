@@ -7,6 +7,7 @@ const propertyRoutes  = require("./routes/propertyRoutes");
 const contentRoutes   = require("./routes/contentRoutes");
 const portfolioRoutes = require("./routes/portfolioRoutes");
 const adminAuthRoutes = require("./routes/adminAuthRoutes");
+const storyRoutes = require("./routes/storyRoutes"); 
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
@@ -30,15 +31,13 @@ app.use(
 
 if (process.env.NODE_ENV !== "production") app.use(morgan("dev"));
 
-app.use(express.json());
 
-app.get("/api/health", (req, res) => res.json({ status: "ok" }));
-
-app.use("/api/auth",       authRoutes);
-app.use("/api/properties", propertyRoutes);
-app.use("/api/content",    contentRoutes);
-app.use("/api/portfolio",  portfolioRoutes);
-app.use("/api/admin/auth", adminAuthRoutes);
+app.use("/api/auth",       express.json(), authRoutes);
+app.use("/api/properties", propertyRoutes);  // has its own multer handling
+app.use("/api/content",    express.json(), contentRoutes);
+app.use("/api/portfolio",  express.json(), portfolioRoutes);
+app.use("/api/admin/auth", express.json(), adminAuthRoutes);
+app.use("/api/stories",    storyRoutes);    
 
 app.use(notFound);
 app.use(errorHandler);
