@@ -8,6 +8,7 @@ const contentRoutes   = require("./routes/contentRoutes");
 const portfolioRoutes = require("./routes/portfolioRoutes");
 const adminAuthRoutes = require("./routes/adminAuthRoutes");
 const storyRoutes = require("./routes/storyRoutes"); 
+const projectRoutes = require("./routes/projectRoutes");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
@@ -38,6 +39,7 @@ app.use("/api/content",    express.json(), contentRoutes);
 app.use("/api/portfolio",  express.json(), portfolioRoutes);
 app.use("/api/admin/auth", express.json(), adminAuthRoutes);
 app.use("/api/stories",    storyRoutes);    
+app.use("/api/projects", projectRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
