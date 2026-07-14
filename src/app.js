@@ -18,17 +18,18 @@ const allowedOrigins = [
   process.env.CLIENT_URL_2,
 ].filter(Boolean);
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.length === 0) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      callback(new Error(`CORS: origin ${origin} not allowed`));
+// CORS configuration
+
+app.use(cors({
+    origin: function(origin, callback) {
+        if(!origin) return callback(null, true);
+        if(allowedOrigins.indexOf(origin) === -1) {
+            return callback(null, true); // For development
+        }
+        return callback(null, true);
     },
-    credentials: true,
-  })
-);
+    credentials: true
+}));
 
 if (process.env.NODE_ENV !== "production") app.use(morgan("dev"));
 
