@@ -134,6 +134,8 @@ router.post("/generate", async (req, res) => {
     "232+233", "best[protocol=m3u8_native]", "best",
   ].join("/");
 
+const BGUTIL_URL = process.env.BGUTIL_BASE_URL ?? "http://127.0.0.1:4416";
+
 const cmd = [
   "yt-dlp",
   "--download-sections", `"${section}"`,
@@ -141,17 +143,19 @@ const cmd = [
   "-f", `"${FORMAT}"`,
   "--no-playlist",
   "--merge-output-format", "mp4",
-  "--extractor-args", "youtube:player_client=mweb",
+  "--extractor-args", "youtube:player_client=visionos",
   "-o", `"${outPath}"`,
   `"${url}"`,
 ].join(" ");
 
-  try {
-    await execAsync(cmd, { timeout: 5 * 60 * 1000 });
-  } catch (err) {
-    console.error("[clip/generate] yt-dlp error:", err.message);
-    return res.status(500).json({ error: "Failed to download clip. The video may be unavailable or region-locked." });
-  }
+
+try {
+  await execAsync(cmd, { timeout: 5 * 60 * 1000 });
+} catch (err) {
+  console.error("[clip/generate] yt-dlp error:", err.message);
+  console.error("[clip/generate] stderr:", err.stderr);
+  return res.status(500).json({ error: "Failed to download clip. The video may be unavailable or region-locked." });
+}
 
   if (!existsSync(outPath)) {
     return res.status(500).json({ error: "Clip generation succeeded but output file not found." });

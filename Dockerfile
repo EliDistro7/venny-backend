@@ -1,68 +1,56 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Stage 1 — deps
-# Install only production dependencies in a clean layer so the final image
-# never includes devDependencies or the npm cache.
+# Stage 1 — node deps
 # ─────────────────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS deps
 
 WORKDIR /app
-
-# Copy only the manifest files first so Docker caches this layer until they change
 COPY package.json package-lock.json* ./
-
 RUN npm ci --omit=dev
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 2 — build bgutil server
+# ─────────────────────────────────────────────────────────────────────────────
+FROM node:20-alpine AS bgutil-build
+
+RUN apk add --no-cache \
+      git python3 make g++ \
+      pkgconfig pixman-dev cairo-dev pango-dev jpeg-dev giflib-dev
+
+WORKDIR /opt/bgutil
+RUN git clone --depth=1 --branch 1.3.1 \
+      https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git .
+
+WORKDIR /opt/bgutil/server
+RUN npm ci \
+ && npx tsc --project tsconfig.json
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Stage 2 — final image
+# Stage 3 — final image
 # ─────────────────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 
-# Install system binaries needed at runtime (yt-dlp + ffmpeg for clip tool)
-RUN apk add --no-cache ffmpeg python3 py3-pip nodejs deno \
- && pip3 install yt-dlp --break-system-packages \
- && pip3 install bgutil-ytdlp-pot-provider --break-system-packages
+RUN apk add --no-cache \
+      ffmpeg python3 py3-pip supervisor \
+      pixman cairo pango jpeg giflib \
+ && pip3 install yt-dlp bgutil-ytdlp-pot-provider --break-system-packages
 
-
-# Basic hardening: run as a non-root user
 RUN addgroup --system --gid 1001 bss \
  && adduser  --system --uid 1001 --ingroup bss bss
 
+WORKDIR /opt/bgutil/server
+COPY --from=bgutil-build /opt/bgutil/server/build        ./build
+COPY --from=bgutil-build /opt/bgutil/server/node_modules ./node_modules
+COPY --from=bgutil-build /opt/bgutil/server/package.json ./
+
 WORKDIR /app
-
-# Copy installed modules from the deps stage (no devDeps, no cache)
 COPY --from=deps /app/node_modules ./node_modules
-
-# Copy application source
-COPY src/ ./src/
-
-# Own everything as the non-root user
+COPY src/        ./src/
 RUN chown -R bss:bss /app
 
-USER bss
+COPY supervisord.conf /etc/supervisord.conf
 
-# ── runtime config ────────────────────────────────────────────────────────────
-# All secrets come from environment variables — never baked into the image.
-#
-# Required:
-#   MONGO_URI                  — MongoDB connection string
-#   JWT_SECRET                 — Secret used to sign admin JWTs
-#   ADMIN_PASSWORD             — Default admin password (seeded on first boot)
-#
-# Required for file uploads (Cloudflare R2):
-#   CLOUDFLARE_ACCOUNT_ID
-#   R2_ACCESS_KEY_ID
-#   R2_SECRET_ACCESS_KEY
-#   R2_BUCKET_NAME
-#   R2_PUBLIC_URL              — Public base URL of the R2 bucket/domain
-#
-# Optional:
-#   PORT                       — Defaults to 5000
-#   CLIENT_URL                 — Allowed CORS origin #1
-#   CLIENT_URL_2               — Allowed CORS origin #2
-#   NODE_ENV                   — Set to "production" to silence Morgan dev logs
-#   CLIPS_DIR                  — Directory for temporary clip storage (default: /tmp/bss-clips)
+ENV BGUTIL_BASE_URL=http://127.0.0.1:4416
 
 EXPOSE 5000
 
-CMD ["node", "src/server.js"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
