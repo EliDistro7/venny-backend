@@ -19,8 +19,9 @@ RUN npm ci --omit=dev
 FROM node:20-alpine AS runner
 
 # Install system binaries needed at runtime (yt-dlp + ffmpeg for clip tool)
-RUN apk add --no-cache ffmpeg python3 py3-pip \
+RUN apk add --no-cache ffmpeg python3 py3-pip nodejs \
  && pip3 install yt-dlp --break-system-packages
+
 
 # Basic hardening: run as a non-root user
 RUN addgroup --system --gid 1001 bss \

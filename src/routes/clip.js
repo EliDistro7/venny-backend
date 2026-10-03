@@ -128,16 +128,19 @@ router.post("/generate", async (req, res) => {
     "232+233", "best[protocol=m3u8_native]", "best",
   ].join("/");
 
-  const cmd = [
-    "yt-dlp",
-    "--download-sections", `"${section}"`,
-    "--force-keyframes-at-cuts",
-    "-f", `"${FORMAT}"`,
-    "--no-playlist",
-    "--merge-output-format", "mp4",
-    "-o", `"${outPath}"`,
-    `"${url}"`,
-  ].join(" ");
+const cmd = [
+  "yt-dlp",
+  "--download-sections", `"${section}"`,
+  "--force-keyframes-at-cuts",
+  "-f", `"${FORMAT}"`,
+  "--no-playlist",
+  "--merge-output-format", "mp4",
+  "--extractor-args", "youtube:player_client=web",
+  "--add-header", "referer:youtube.com",
+  "--add-header", "origin:https://www.youtube.com",
+  "-o", `"${outPath}"`,
+  `"${url}"`,
+].join(" ");
 
   try {
     await execAsync(cmd, { timeout: 5 * 60 * 1000 });
