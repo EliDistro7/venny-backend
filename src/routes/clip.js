@@ -55,6 +55,9 @@ async function pruneOldClips() {
 // ─── POST /api/clip/price ─────────────────────────────────────────────────────
 
 router.post("/price", (req, res) => {
+      if (!req.body) {
+    return res.status(400).json({ error: "Request body missing or not JSON" });
+  }
   const { start, end } = req.body;
 
   if (typeof start !== "string" || typeof end !== "string") {
@@ -95,6 +98,9 @@ router.post("/price", (req, res) => {
 // ─── POST /api/clip/generate ──────────────────────────────────────────────────
 
 router.post("/generate", async (req, res) => {
+     if (!req.body) {
+    return res.status(400).json({ error: "Request body missing or not JSON" });
+  }
   const { url, start, end } = req.body;
 
   if (typeof url !== "string" || typeof start !== "string" || typeof end !== "string") {
@@ -135,9 +141,7 @@ const cmd = [
   "-f", `"${FORMAT}"`,
   "--no-playlist",
   "--merge-output-format", "mp4",
-  "--extractor-args", "youtube:player_client=web",
-  "--add-header", "referer:youtube.com",
-  "--add-header", "origin:https://www.youtube.com",
+  "--extractor-args", "youtube:player_client=mweb",
   "-o", `"${outPath}"`,
   `"${url}"`,
 ].join(" ");
