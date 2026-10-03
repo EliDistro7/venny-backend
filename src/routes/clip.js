@@ -144,6 +144,7 @@ const cmd = [
   "--no-playlist",
   "--merge-output-format", "mp4",
   "--extractor-args", "youtube:player_client=visionos",
+  "--extractor-args", `"youtubepot-bgutilhttp:base_url=${BGUTIL_URL}"`,
   "-o", `"${outPath}"`,
   `"${url}"`,
 ].join(" ");
