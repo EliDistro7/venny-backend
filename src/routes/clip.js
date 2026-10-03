@@ -129,10 +129,12 @@ router.post("/generate", async (req, res) => {
   const outPath  = path.join(CLIPS_DIR, filename);
   const section  = `*${formatTime(startSecs)}-${formatTime(endSecs)}`;
 
-  const FORMAT = [
-    "232+234", "231+234", "230+234", "229+234",
-    "232+233", "best[protocol=m3u8_native]", "best",
-  ].join("/");
+ const FORMAT = [
+  "bestvideo[protocol=m3u8_native]+bestaudio[protocol=m3u8_native]",
+  "best[protocol=m3u8_native]",
+  "bestvideo+bestaudio",
+  "best",
+].join("/");
 
 const BGUTIL_URL = process.env.BGUTIL_BASE_URL ?? "http://127.0.0.1:4416";
 
@@ -143,8 +145,7 @@ const cmd = [
   "-f", `"${FORMAT}"`,
   "--no-playlist",
   "--merge-output-format", "mp4",
-  "--extractor-args", "youtube:player_client=visionos",
-  "--extractor-args", `"youtubepot-bgutilhttp:base_url=${BGUTIL_URL}"`,
+  "--extractor-args", "youtube:player_client=android_vr",
   "-o", `"${outPath}"`,
   `"${url}"`,
 ].join(" ");
